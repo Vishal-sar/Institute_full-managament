@@ -16,6 +16,7 @@ import { PageHeader } from "@/components/common/PageHeader";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { EmptyState } from "@/components/common/EmptyState";
 import { Loader } from "@/components/common/Loader";
+import { PendingSignups } from "@/components/admin/PendingSignups";
 
 const PAGE = 20;
 const emptyForm = { name: "", phone: "", email: "", course_id: "", batch_id: "", admission_date: "", fee_total: "", notes: "", create_login: false, password: "" };
@@ -120,6 +121,8 @@ export default function Students() {
           </DialogContent>
         </Dialog>
       </PageHeader>
+
+      <PendingSignups onLinked={load} />
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="relative flex-1">

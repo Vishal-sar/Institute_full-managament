@@ -8,7 +8,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request,
 
 from db import db, gen_id, now_iso, audit
 from models import LoginIn, GoogleSessionIn, RegisterIn, ForgotPasswordIn, ResetPasswordIn
-from emailer import notify
+from emailer import notify, send_welcome
 from security import (
     verify_password, create_access_token, create_refresh_token, set_auth_cookies,
     set_session_cookie, clear_cookies, get_current_user, check_lockout, register_failure,
@@ -80,7 +80,7 @@ async def login(payload: LoginIn, request: Request, response: Response):
 
 
 @router.post("/register")
-async def register(payload: RegisterIn, request: Request, response: Response):
+async def register(payload: RegisterIn, request: Request, response: Response, background: BackgroundTasks):
     await rate_limit(request, "register", limit=5, window_sec=600)
     email = payload.email.lower().strip()
     if len(payload.password) < 6:
@@ -99,6 +99,8 @@ async def register(payload: RegisterIn, request: Request, response: Response):
         "created_at": now_iso(), "updated_at": now_iso(),
     }
     await _insert_user(user)
+    if user.get("linked_student_id"):
+        background.add_task(send_welcome, email, user["name"], user["linked_student_id"])
     access = create_access_token(uid, email)
     refresh = create_refresh_token(uid)
     set_auth_cookies(response, access, refresh)
@@ -187,7 +189,7 @@ async def refresh(request: Request, response: Response):
 
 
 @router.post("/google/session")
-async def google_session(payload: GoogleSessionIn, response: Response):
+async def google_session(payload: GoogleSessionIn, response: Response, background: BackgroundTasks):
     # REMINDER: DO NOT HARDCODE THE URL, OR ADD ANY FALLBACKS OR REDIRECT URLS, THIS BREAKS THE AUTH
     try:
         async with httpx.AsyncClient(timeout=20) as client:
@@ -223,6 +225,8 @@ async def google_session(payload: GoogleSessionIn, response: Response):
             "active": True, "created_at": now_iso(), "updated_at": now_iso(),
         }
         await _insert_user(user)
+        if role == "student" and user.get("linked_student_id"):
+            background.add_task(send_welcome, email, name, user["linked_student_id"])
     else:
         await db.users.update_one({"id": user["id"]}, {"$set": {"picture": picture, "updated_at": now_iso()}})
 

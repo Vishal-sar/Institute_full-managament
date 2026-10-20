@@ -62,7 +62,7 @@ function LinkDialog({ student, onDone }) {
     setSaving(true);
     try {
       await api.post(`/admin/students/${student.id}/link-account`, { user_id: selected });
-      toast.success("Account linked. The student can now see their fees and attendance.");
+      toast.success("Account linked. A welcome email is on its way to the student.");
       setOpen(false); onDone();
     } catch (e) { toast.error(errMsg(e)); } finally { setSaving(false); }
   };

@@ -137,6 +137,39 @@ async def notify(kind: str, to: str, context: dict):
     await db.notifications.insert_one(record)
 
 
+async def send_welcome(to: str, name: str, student_id: str):
+    student = await db.students.find_one({"id": student_id}, {"_id": 0}) or {}
+    course = await db.courses.find_one({"id": student.get("course_id")}, {"_id": 0, "title": 1}) if student.get("course_id") else None
+    batch = await db.batches.find_one({"id": student.get("batch_id")}, {"_id": 0}) if student.get("batch_id") else None
+    await notify("welcome_linked", to, {
+        "name": name or student.get("name"), "student_code": student.get("student_code"),
+        "course": course["title"] if course else None, "batch": batch,
+        "portal": f"{os.environ['FRONTEND_URL'].rstrip('/')}/student",
+    })
+
+
+def _row(label: str, value) -> str:
+    return (f'<tr><td style="padding:6px 16px 6px 0;color:#64748b">{label}</td>'
+            f'<td style="padding:6px 0;color:#0f172a;font-weight:bold">{escape(str(value))}</td></tr>')
+
+
+def _welcome_rows(c: dict) -> str:
+    b = c.get("batch") or {}
+    rows = _row("Student ID", c.get("student_code") or "-")
+    rows += _row("Course", c.get("course") or "Not assigned yet")
+    rows += _row("Batch", b.get("name") or "Not assigned yet")
+    days = ", ".join(b.get("days") or [])
+    times = " - ".join(t for t in (b.get("start_time"), b.get("end_time")) if t)
+    if days or times:
+        rows += _row("Schedule", f"{days} {times}".strip())
+    if b.get("start_date"):
+        rows += _row("Starts on", b["start_date"])
+    mode = (b.get("mode") or "").capitalize()
+    if mode or b.get("location"):
+        rows += _row("Mode", " · ".join(x for x in (mode, b.get("location")) if x))
+    return rows
+
+
 def _build(kind: str, c: dict):
     name = escape(str(c.get("name", "there")))
     if kind == "enquiry_received":
@@ -181,6 +214,18 @@ def _build(kind: str, c: dict):
             f'padding:12px 22px;border-radius:8px;text-decoration:none;font-weight:bold">Reset my password</a></p>'
             f'<p>This link can be used once and expires in {escape(str(c.get("minutes", 60)))} minutes.</p>'
             f'<p>If you did not request this, you can safely ignore this email. Nothing will change.</p>'
+        )
+    elif kind == "welcome_linked":
+        subject = f"Welcome to {EMAIL_FROM_NAME}, your student portal is ready"
+        portal = escape(str(c.get("portal", "")), quote=True)
+        inner = (
+            f'<p>Hi {name},</p>'
+            f'<p>Welcome aboard! Your account is now linked to your student record, so you can see your '
+            f'course, class schedule, attendance and fees in the student portal.</p>'
+            f'<table role="presentation" style="margin:16px 0;font-size:14px">{_welcome_rows(c)}</table>'
+            f'<p style="margin:24px 0"><a href="{portal}" style="display:inline-block;background:#0d9488;color:#ffffff;'
+            f'padding:12px 22px;border-radius:8px;text-decoration:none;font-weight:bold">Open my student portal</a></p>'
+            f'<p>If any detail looks wrong, please contact the institute office.</p>'
         )
     else:
         subject = f"{EMAIL_FROM_NAME} notification"

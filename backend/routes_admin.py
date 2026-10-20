@@ -4,13 +4,13 @@ import re
 import uuid
 from datetime import datetime, timezone
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Response
 from pymongo.errors import DuplicateKeyError
 
 from db import db, gen_id, now_iso, today_str, audit
 from security import require_roles, hash_password
 from services import fee_summary, attendance_summary
-from emailer import notify
+from emailer import notify, send_welcome
 from models import (
     CourseIn, FacultyIn, BatchIn, StudentIn, StudentUpdateIn, EnrollIn, EnquiryUpdateIn,
     FollowUpIn, ConvertIn, DemoSlotIn, AttendanceMarkIn, InstallmentIn, PaymentIn,
@@ -365,11 +365,20 @@ async def student_profile(student_id: str, user=Staff):
 @router.get("/student-accounts")
 async def unlinked_student_accounts(user=Staff):
     q = {"role": "student", "linked_student_id": None, "active": {"$ne": False}}
-    return await db.users.find(q, ACCOUNT_FIELDS).sort("created_at", -1).to_list(500)
+    accounts = await db.users.find(q, ACCOUNT_FIELDS).sort("created_at", -1).to_list(500)
+    linked = [u["linked_student_id"] async for u in db.users.find(
+        {"linked_student_id": {"$type": "string"}}, {"_id": 0, "linked_student_id": 1})]
+    for a in accounts:
+        ors = [{"email": {"$regex": f"^{re.escape(a['email'])}$", "$options": "i"}}]
+        if a.get("phone"):
+            ors.append({"phone": a["phone"]})
+        a["suggested_student"] = await db.students.find_one(
+            {"$or": ors, "id": {"$nin": linked}}, {"_id": 0, "id": 1, "name": 1, "student_code": 1})
+    return accounts
 
 
 @router.post("/students/{student_id}/link-account")
-async def link_student_account(student_id: str, payload: LinkAccountIn, user=Staff):
+async def link_student_account(student_id: str, payload: LinkAccountIn, background: BackgroundTasks, user=Staff):
     student = await db.students.find_one({"id": student_id}, {"_id": 0})
     if not student:
         raise HTTPException(status_code=404, detail="Student not found")
@@ -385,6 +394,7 @@ async def link_student_account(student_id: str, payload: LinkAccountIn, user=Sta
     except DuplicateKeyError:
         raise HTTPException(status_code=409, detail="This student already has a linked account. Unlink it first.")
     await audit(user, "link_account", "student", student_id, f"Linked login {acct['email']} to {student['name']}")
+    background.add_task(send_welcome, acct["email"], acct.get("name"), student_id)
     return {"message": "Account linked", "account": await db.users.find_one({"id": acct["id"]}, ACCOUNT_FIELDS)}
 
 
