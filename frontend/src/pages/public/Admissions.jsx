@@ -45,7 +45,7 @@ export default function Admissions() {
     if (!validate()) return;
     setLoading(true);
     try {
-      const payload = { ...form, course_id: form.course_id || null, consent: true, source: "website" };
+      const payload = { ...form, email: form.email.trim() || null, course_id: form.course_id || null, consent: true, source: "website" };
       const { data } = await api.post("/enquiries", payload);
       setSuccess(data);
       toast.success(data.duplicate ? "We already have your enquiry" : "Enquiry submitted successfully");

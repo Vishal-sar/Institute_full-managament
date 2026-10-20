@@ -1,5 +1,13 @@
-from typing import List, Optional
-from pydantic import BaseModel, EmailStr, Field
+from typing import List, Optional, Annotated
+from pydantic import BaseModel, EmailStr, Field, BeforeValidator
+
+
+def _empty_to_none(v):
+    return None if v == "" else v
+
+
+# Optional email that tolerates blank strings from forms ("" -> None)
+OptionalEmailStr = Annotated[Optional[EmailStr], BeforeValidator(_empty_to_none)]
 
 
 # ---------- Auth ----------
@@ -10,6 +18,13 @@ class LoginIn(BaseModel):
 
 class GoogleSessionIn(BaseModel):
     session_id: str
+
+
+class RegisterIn(BaseModel):
+    name: str
+    email: EmailStr
+    password: str
+    phone: Optional[str] = None
 
 
 class StaffIn(BaseModel):
@@ -91,7 +106,7 @@ class BatchIn(BaseModel):
 class StudentIn(BaseModel):
     name: str
     phone: str
-    email: Optional[EmailStr] = None
+    email: OptionalEmailStr = None
     admission_date: Optional[str] = None
     course_id: Optional[str] = None
     batch_id: Optional[str] = None
@@ -106,7 +121,7 @@ class StudentIn(BaseModel):
 class StudentUpdateIn(BaseModel):
     name: Optional[str] = None
     phone: Optional[str] = None
-    email: Optional[EmailStr] = None
+    email: OptionalEmailStr = None
     status: Optional[str] = None
     notes: Optional[str] = None
     emergency_contact: Optional[str] = None
@@ -121,14 +136,14 @@ class EnrollIn(BaseModel):
 
 class StudentContactIn(BaseModel):
     phone: Optional[str] = None
-    email: Optional[EmailStr] = None
+    email: OptionalEmailStr = None
 
 
 # ---------- Enquiries ----------
 class EnquiryIn(BaseModel):
     name: str
     phone: str
-    email: Optional[EmailStr] = None
+    email: OptionalEmailStr = None
     course_id: Optional[str] = None
     preferred_batch: str = ""
     message: str = ""
@@ -167,7 +182,7 @@ class DemoSlotIn(BaseModel):
 class DemoBookingIn(BaseModel):
     name: str
     phone: str
-    email: Optional[EmailStr] = None
+    email: OptionalEmailStr = None
     course_id: str
     slot_id: str
     consent: bool = False

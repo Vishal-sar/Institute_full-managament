@@ -1,4 +1,5 @@
 import { useNavigate, Link } from "react-router-dom";
+import { useEffect } from "react";
 import { LogOut, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,6 +13,8 @@ export function PortalShell({ title, children }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const doLogout = async () => { await logout(); navigate("/login", { replace: true }); };
+
+  useEffect(() => { document.title = `${title} | EduPrime Academy`; }, [title]);
 
   return (
     <div className="min-h-screen bg-slate-50">

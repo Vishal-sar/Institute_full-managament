@@ -10,30 +10,45 @@ import { useSettings } from "@/context/SettingsContext";
 import { errMsg } from "@/lib/api";
 import { homeFor } from "@/lib/roles";
 import { Seo } from "@/components/common/Seo";
+import { cn } from "@/lib/utils";
 
 export default function Login() {
-  const { user, login } = useAuth();
+  const { user, login, register } = useAuth();
   const { settings } = useSettings();
   const navigate = useNavigate();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [mode, setMode] = useState("login"); // login | register
+  const [form, setForm] = useState({ name: "", email: "", phone: "", password: "" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
   useEffect(() => {
     if (user) navigate(homeFor(user.role), { replace: true });
   }, [user, navigate]);
+
+  const switchMode = (m) => { setMode(m); setError(""); };
 
   const submit = async (e) => {
     e.preventDefault();
     setError("");
     setLoading(true);
     try {
-      const data = await login(email.trim(), password);
-      toast.success(`Welcome back, ${data.name}`);
-      navigate(homeFor(data.role), { replace: true });
+      if (mode === "login") {
+        const data = await login(form.email.trim(), form.password);
+        toast.success(`Welcome back, ${data.name}`);
+        navigate(homeFor(data.role), { replace: true });
+      } else {
+        if (!form.name.trim()) throw new Error("Please enter your name");
+        if (form.password.length < 6) throw new Error("Password must be at least 6 characters");
+        const data = await register({ name: form.name.trim(), email: form.email.trim(), password: form.password, phone: form.phone.trim() || null });
+        toast.success(`Welcome, ${data.name}! Your account is ready.`);
+        navigate(homeFor(data.role), { replace: true });
+      }
     } catch (err) {
-      setError(errMsg(err));
+      const msg = err?.response ? errMsg(err) : err.message;
+      setError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -45,10 +60,11 @@ export default function Login() {
     window.location.href = `https://auth.emergentagent.com/?redirect=${encodeURIComponent(redirectUrl)}`;
   };
 
+  const isLogin = mode === "login";
+
   return (
     <div className="flex min-h-screen bg-slate-900">
-      <Seo title="Login" description="Sign in to the EduPrime Academy portal." />
-      {/* Brand panel */}
+      <Seo title={isLogin ? "Login" : "Create Account"} description="Access the EduPrime Academy portal." />
       <div className="relative hidden w-1/2 flex-col justify-between overflow-hidden p-12 lg:flex">
         <div className="absolute inset-0 hero-grid opacity-40" />
         <div className="relative">
@@ -67,29 +83,48 @@ export default function Login() {
         <div className="relative text-sm text-slate-400">Secure, role-based access</div>
       </div>
 
-      {/* Form */}
       <div className="flex w-full items-center justify-center p-6 lg:w-1/2">
         <div className="w-full max-w-sm rounded-2xl bg-white p-8 shadow-xl">
           <Link to="/" className="mb-6 inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-teal-600">
             <ArrowLeft className="h-4 w-4" /> Back to website
           </Link>
-          <h1 className="font-display text-2xl font-bold text-slate-900">Portal Login</h1>
-          <p className="mt-1 text-sm text-slate-500">Sign in to continue to your dashboard.</p>
 
-          <form onSubmit={submit} className="mt-6 space-y-4" data-testid="login-form">
+          <div className="mb-6 grid grid-cols-2 gap-1 rounded-lg bg-slate-100 p-1" data-testid="auth-mode-tabs">
+            <button type="button" onClick={() => switchMode("login")} data-testid="mode-login"
+              className={cn("rounded-md py-2 text-sm font-medium transition-colors", isLogin ? "bg-white text-slate-900 shadow-sm" : "text-slate-500")}>Sign In</button>
+            <button type="button" onClick={() => switchMode("register")} data-testid="mode-register"
+              className={cn("rounded-md py-2 text-sm font-medium transition-colors", !isLogin ? "bg-white text-slate-900 shadow-sm" : "text-slate-500")}>Create Account</button>
+          </div>
+
+          <h1 className="font-display text-2xl font-bold text-slate-900">{isLogin ? "Portal Login" : "Create your account"}</h1>
+          <p className="mt-1 text-sm text-slate-500">{isLogin ? "Sign in to continue to your dashboard." : "Sign up to track your courses, attendance and fees."}</p>
+
+          <form onSubmit={submit} className="mt-6 space-y-4" data-testid={isLogin ? "login-form" : "register-form"}>
+            {!isLogin && (
+              <div className="space-y-1.5">
+                <Label htmlFor="name">Full name</Label>
+                <Input id="name" required value={form.name} onChange={(e) => set("name", e.target.value)} placeholder="Your name" data-testid="register-name-input" />
+              </div>
+            )}
             <div className="space-y-1.5">
               <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
+              <Input id="email" type="email" required value={form.email} onChange={(e) => set("email", e.target.value)}
                 placeholder="you@example.com" data-testid="login-email-input" autoComplete="email" />
             </div>
+            {!isLogin && (
+              <div className="space-y-1.5">
+                <Label htmlFor="phone">Phone (optional)</Label>
+                <Input id="phone" value={form.phone} onChange={(e) => set("phone", e.target.value)} placeholder="Your phone number" data-testid="register-phone-input" />
+              </div>
+            )}
             <div className="space-y-1.5">
               <Label htmlFor="password">Password</Label>
-              <Input id="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••" data-testid="login-password-input" autoComplete="current-password" />
+              <Input id="password" type="password" required value={form.password} onChange={(e) => set("password", e.target.value)}
+                placeholder={isLogin ? "••••••••" : "At least 6 characters"} data-testid="login-password-input" autoComplete={isLogin ? "current-password" : "new-password"} />
             </div>
             {error && <p className="text-sm font-medium text-rose-600" data-testid="login-error">{error}</p>}
-            <Button type="submit" className="w-full bg-teal-600 hover:bg-teal-700" disabled={loading} data-testid="login-submit-btn">
-              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Sign In"}
+            <Button type="submit" className="w-full bg-teal-600 hover:bg-teal-700" disabled={loading} data-testid={isLogin ? "login-submit-btn" : "register-submit-btn"}>
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : isLogin ? "Sign In" : "Create Account"}
             </Button>
           </form>
 
@@ -105,7 +140,7 @@ export default function Login() {
           </Button>
 
           <p className="mt-6 text-center text-xs text-slate-400">
-            Staff accounts are created by your administrator. New Google sign-ins start as student accounts.
+            {isLogin ? "New here? Use Create Account or Google to get started." : "Self sign-up creates a student account. Staff accounts are created by your administrator."}
           </p>
         </div>
       </div>

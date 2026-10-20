@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, Users, UserPlus, CalendarCheck, BookOpen, Boxes, GraduationCap,
@@ -65,6 +65,8 @@ export function AdminLayout() {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const isSuper = user?.role === "super_admin";
+
+  useEffect(() => { document.title = "Management Console | EduPrime Academy"; }, []);
 
   const doLogout = async () => {
     await logout();

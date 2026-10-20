@@ -4,11 +4,11 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 
 from db import db, gen_id, now_iso
-from models import LoginIn, GoogleSessionIn
+from models import LoginIn, GoogleSessionIn, RegisterIn
 from security import (
     verify_password, create_access_token, create_refresh_token, set_auth_cookies,
     set_session_cookie, clear_cookies, get_current_user, check_lockout, register_failure,
-    clear_failures, get_jwt_secret,
+    clear_failures, get_jwt_secret, hash_password,
 )
 import jwt
 from datetime import datetime, timezone, timedelta
@@ -44,6 +44,31 @@ async def login(payload: LoginIn, request: Request, response: Response):
     await clear_failures(identifier)
     access = create_access_token(user["id"], email)
     refresh = create_refresh_token(user["id"])
+    set_auth_cookies(response, access, refresh)
+    return _public_user(user)
+
+
+@router.post("/register")
+async def register(payload: RegisterIn, response: Response):
+    email = payload.email.lower().strip()
+    if len(payload.password) < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+    if await db.users.find_one({"email": email}):
+        raise HTTPException(status_code=409, detail="An account with this email already exists. Please sign in.")
+    # Self-service accounts are always students; link to an existing student record if the email matches.
+    student = await db.students.find_one({"email": email}, {"_id": 0})
+    uid = gen_id()
+    user = {
+        "id": uid, "email": email, "name": payload.name.strip(), "role": "student",
+        "phone": payload.phone, "password_hash": hash_password(payload.password),
+        "auth_provider": "password", "picture": None,
+        "linked_student_id": student["id"] if student else None,
+        "linked_faculty_id": None, "active": True,
+        "created_at": now_iso(), "updated_at": now_iso(),
+    }
+    await db.users.insert_one(user)
+    access = create_access_token(uid, email)
+    refresh = create_refresh_token(uid)
     set_auth_cookies(response, access, refresh)
     return _public_user(user)
 
