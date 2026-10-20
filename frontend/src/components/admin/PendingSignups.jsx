@@ -100,7 +100,9 @@ function PickStudentDialog({ account, busy, onClose, onLink }) {
                   <p className="font-medium text-slate-800">{s.name}</p>
                   <p className="truncate text-xs text-slate-500">{s.student_code} · {s.phone}{s.course_title ? ` · ${s.course_title}` : ""}</p>
                 </div>
-                <Button size="sm" disabled={busy} onClick={() => onLink(s.id, account)} className="shrink-0 bg-teal-600 hover:bg-teal-700" data-testid={`pick-student-${s.id}`}>Link</Button>
+                {s.has_login
+                  ? <span className="shrink-0 rounded bg-slate-100 px-2 py-1 text-xs font-medium text-slate-500" data-testid={`pick-student-linked-${s.id}`}>Already linked</span>
+                  : <Button size="sm" disabled={busy} onClick={() => onLink(s.id, account)} className="shrink-0 bg-teal-600 hover:bg-teal-700" data-testid={`pick-student-${s.id}`}>Link</Button>}
               </div>
             ))}
         </div>

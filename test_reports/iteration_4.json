@@ -1,0 +1,36 @@
+{
+  "summary": "Tested the pending sign-ups panel, suggested_student matching, quick-link and choose-student linking, and welcome_linked emails sent from admin link and from auto-link at sign-up. Also re-checked link/unlink, RBAC and logins for all 4 roles. Backend: 10/11 pytest tests passed. The 1 failure is an older bug in /api/admin/students search, not part of this feature. UI flows all passed: the panel shows the right count and rows, the quick-link button appears only when a suggestion exists, the success toast mentions the welcome email, rows disappear after linking and the panel hides when none are left, a 409 shows an error toast and the dialog stays open, linking from the picker works, the detail page shows linked-account-info, and the linked student's /student portal shows their course and batch. Each link wrote exactly one welcome_linked notification. These had status 'failed' because the email service returns 422 for example.com addresses, which the brief says is acceptable. Unmatched sign-ups and failed links wrote no welcome notification. Linking returned in under 5s.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "GET /api/admin/students?search=(", "issue": "Returns 500. The search text is passed to Mongo $regex without re.escape, so regex special characters like ( [ + * break the query. This also affects pick-student-search in the new dialog, which uses this endpoint. Fix: use re.escape(search) in routes_admin.admin_students."},
+      {"endpoint": "POST /api/auth/register (_free_student_id)", "issue": "Auto-link uses an exact, case-sensitive email match ({'email': email}). The suggestion logic uses a case-insensitive regex. A student record saved with a mixed-case email will be suggested in the panel but will not auto-link at sign-up. Fix: match case-insensitively or normalise student emails to lowercase on create/update."},
+      {"endpoint": "POST /api/admin/students/{id}/link-account", "issue": "Re-linking an account to the student it is already linked to returns 200 and queues another welcome email. Fix: skip send_welcome when acct.linked_student_id == student_id."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "PickStudentDialog", "issues": ["The results list does not show which students already have a login (e.g. STU-0001 shows an active Link button). The user only finds out from the 409 toast after clicking. Consider an 'Already linked' badge or disabling the button."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_iter4_pending_welcome.py", "/app/backend/tests/ui_prep_iter4.py", "/app/test_reports/pytest/pytest_iter4.xml"],
+  "action_items": [
+    "Escape the search regex in GET /api/admin/students (re.escape) to fix the 500 on special characters",
+    "Make the _free_student_id email match case-insensitive so it agrees with the suggested_student logic",
+    "Optional: don't re-send the welcome email when re-linking the same account to the same student; show an 'already linked' state in the pick dialog"
+  ],
+  "critical_code_review_comments": [
+    "unlinked_student_accounts runs one students.find_one per account (N+1) and loads every linked id into a $nin list. Fine at the current scale (limit 500).",
+    "Phone match is an exact string compare, so formats like +91 or spaces will not match. Consider normalising phone numbers.",
+    "routes_admin.py is 912 lines; consider splitting the students/accounts routes into their own module.",
+    "Leftover announcement 'TEST Ann Updated' from an earlier iteration is still shown in the student portal and should be cleaned up."
+  ],
+  "updated_files": ["/app/backend/tests/test_iter4_pending_welcome.py", "/app/backend/tests/ui_prep_iter4.py"],
+  "success_rate": {"backend": "91% (10/11; the failure is an older search bug outside this feature)", "frontend": "100%"},
+  "seed_data_creation": "Created TEST_Stu students, qa+ users, notifications and audit logs during the tests; all removed afterwards. Unlinked student accounts are back to 0, and student@eduprime-demo.com is still linked to 761010b2... .",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Use ui_prep_iter4.py to create 1 suggested-match and 1 unmatched sign-up (IDs saved to /tmp/iter4_ui.json), and 'python ui_prep_iter4.py cleanup' to remove them. Welcome emails to example.com addresses are recorded as status=failed (422), which is expected. page.request.post needs an absolute URL."
+}

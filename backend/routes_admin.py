@@ -258,7 +258,9 @@ async def batch_roster(batch_id: str, user=Staff):
 # STUDENTS
 # =========================================================================
 async def _next_student_code():
-    n = await db.students.count_documents({})
+    last = await db.students.find_one({"student_code": {"$regex": r"^STU-\d+$"}}, {"_id": 0, "student_code": 1},
+                                      sort=[("student_code", -1)])
+    n = int(last["student_code"].split("-")[1]) if last else 0
     return f"STU-{n + 1:04d}"
 
 
@@ -322,16 +324,20 @@ async def admin_students(user=Staff, search: Optional[str] = None, status: Optio
     if batch_id and batch_id != "all":
         q["batch_id"] = batch_id
     if search:
-        q["$or"] = [{"name": {"$regex": search, "$options": "i"}},
-                    {"phone": {"$regex": search, "$options": "i"}},
-                    {"student_code": {"$regex": search, "$options": "i"}}]
+        rx = re.escape(search.strip())
+        q["$or"] = [{"name": {"$regex": rx, "$options": "i"}},
+                    {"phone": {"$regex": rx, "$options": "i"}},
+                    {"student_code": {"$regex": rx, "$options": "i"}}]
     total = await db.students.count_documents(q)
     items = await db.students.find(q, {"_id": 0}).sort("created_at", -1).skip(skip).limit(limit).to_list(limit)
     cmap = {c["id"]: c["title"] for c in await db.courses.find({}, {"_id": 0}).to_list(500)}
     bmap = {b["id"]: b["name"] for b in await db.batches.find({}, {"_id": 0}).to_list(500)}
+    linked = {u["linked_student_id"] async for u in db.users.find(
+        {"linked_student_id": {"$in": [s["id"] for s in items]}}, {"_id": 0, "linked_student_id": 1})}
     for s in items:
         s["course_title"] = cmap.get(s.get("course_id"), "")
         s["batch_name"] = bmap.get(s.get("batch_id"), "")
+        s["has_login"] = s["id"] in linked
     return {"items": items, "total": total}
 
 
@@ -385,7 +391,9 @@ async def link_student_account(student_id: str, payload: LinkAccountIn, backgrou
     acct = await db.users.find_one({"id": payload.user_id}, {"_id": 0, "password_hash": 0})
     if not acct or acct.get("role") != "student":
         raise HTTPException(status_code=400, detail="Only student login accounts can be linked")
-    if acct.get("linked_student_id") and acct["linked_student_id"] != student_id:
+    if acct.get("linked_student_id") == student_id:
+        return {"message": "Account already linked", "account": await db.users.find_one({"id": acct["id"]}, ACCOUNT_FIELDS)}
+    if acct.get("linked_student_id"):
         raise HTTPException(status_code=409, detail="This account is already linked to another student record")
     if await db.users.find_one({"linked_student_id": student_id, "id": {"$ne": acct["id"]}}):
         raise HTTPException(status_code=409, detail="This student already has a linked account. Unlink it first.")

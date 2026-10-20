@@ -33,7 +33,8 @@ def _hash_token(token: str) -> str:
 
 async def _free_student_id(email: str):
     # Auto-link only to a student record that no other login already owns.
-    student = await db.students.find_one({"email": email}, {"_id": 0, "id": 1})
+    student = await db.students.find_one(
+        {"email": {"$regex": f"^{re.escape(email)}$", "$options": "i"}}, {"_id": 0, "id": 1})
     if student and not await db.users.find_one({"linked_student_id": student["id"]}):
         return student["id"]
     return None
