@@ -1,0 +1,35 @@
+{
+  "summary": "Iteration-2 focused retest of the 3 changes from iteration_1: (1) NEW self-signup endpoint POST /api/auth/register + Create Account UI tab on /login, (2) OptionalEmailStr fix for blank-email enquiries/demo-bookings (coerces '' -> None via BeforeValidator), (3) visible inline login-error + toast on wrong password. All 15 new backend tests pass (test_iter2_changes.py) and all critical UI flows pass end-to-end on the public URL.",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter2_changes.py",
+    "/app/test_reports/pytest/iter2_results.xml",
+    "/app/backend/tests/backend_test.py"
+  ],
+  "action_items": [
+    "Cleanup: a handful of qa+<timestamp>@example.com test users were created via POST /api/auth/register during both the backend tests and the UI test (student role, with no linked_student_id). Consider a one-off cleanup query: db.users.deleteMany({email: /^qa\\+/}) if desired. They are harmless (role=student, no DB linkage)."
+  ],
+  "critical_code_review_comments": [
+    "routes_auth.register: password length validated after email lookup; order is fine but consider validating length BEFORE the DB find_one to avoid unnecessary query on weak-password requests.",
+    "routes_auth.register: payload.phone is stored as-is without any normalization/validation (RegisterIn.phone appears to be an unconstrained str). Add min_length/regex if phone is meant to be a required valid number.",
+    "routes_auth.register: email is linked to an existing student record by email match, but no check prevents creating a user whose email already belongs to a seeded teacher/staff user. The find_one on users already covers that path (same email), so this is fine — but worth asserting via a test that a registered email matching teacher@eduprime-demo.com returns 409 (currently handled because that user row already exists).",
+    "Self-signup response does not include CSRF/double-submit token; relies solely on httpOnly cookies + CORS allow_credentials. Acceptable for current scope.",
+    "No rate-limit on /api/auth/register; a bot could register many accounts. Consider the existing rate_limit helper.",
+    "Login.jsx renders a toast AND inline [data-testid=login-error]; both work. OK."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter2_changes.py (new, 15 tests)"
+  ],
+  "success_rate": { "backend": "100% (15/15 new tests + 57/57 regression unaffected)", "frontend": "100% on retest scope (6/6 UI steps PASS)" },
+  "test_credentials": "Super: panditkaushal850@gmail.com/EduPrime@Admin2026; Admin: staff@eduprime-demo.com/Staff@123; Teacher: teacher@eduprime-demo.com/Teacher@123; Student: student@eduprime-demo.com/Student@123",
+  "seed_data_creation": "Created several transient qa+<timestamp>@example.com student users via /auth/register during tests (role=student, no linked_student_id). Also created ENQ-* and DEMO-* records with blank email. All harmless.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Iteration 2 verified end-to-end. Backend regression suite is split across /app/backend/tests/backend_test.py (iter1, 57 tests) and /app/backend/tests/test_iter2_changes.py (iter2, 15 tests). All pass against the live preview URL. UI selectors to remember for Login: data-testid=mode-register / register-name-input / login-email-input (shared) / register-phone-input / login-password-input / register-submit-btn / login-submit-btn / login-error. Admissions: enquiry-name-input / enquiry-email-input / enquiry-phone-input / enquiry-consent-checkbox / enquiry-course-select / enquiry-submit-button / enquiry-reference.",
+  "rca of the issue": "N/A — iteration_1 bugs are both verified fixed. Enquiry blank-email: backend models.OptionalEmailStr via BeforeValidator('' -> None) now accepts empty string AND frontend Admissions.jsx trims empty to null. Login error visibility: Login.jsx now renders inline [data-testid=login-error] plus a toast on 401. Verified by STEP 2 (visible 'Invalid email or password') and STEP 5 (duplicate-register 409 renders 'An account with this email already exists.') and STEP 6 (client-side 'Password must be at least 6 characters')."
+}

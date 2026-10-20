@@ -10,6 +10,7 @@ from security import (
     set_session_cookie, clear_cookies, get_current_user, check_lockout, register_failure,
     clear_failures, get_jwt_secret, hash_password,
 )
+from routes_public import rate_limit
 import jwt
 from datetime import datetime, timezone, timedelta
 
@@ -49,7 +50,8 @@ async def login(payload: LoginIn, request: Request, response: Response):
 
 
 @router.post("/register")
-async def register(payload: RegisterIn, response: Response):
+async def register(payload: RegisterIn, request: Request, response: Response):
+    await rate_limit(request, "register", limit=5, window_sec=600)
     email = payload.email.lower().strip()
     if len(payload.password) < 6:
         raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
