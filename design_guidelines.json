@@ -1,0 +1,166 @@
+{
+  "brand_identity": {
+    "name": "EduPrime Academy",
+    "tagline": "The Complete Academic Excellence & Institute Management Platform",
+    "theme_archetype": "Swiss & High-Contrast Performance Pro (Educational Tech)",
+    "design_tone": "Trustworthy, Academic, Precise, Premium SaaS",
+    "color_palette": {
+      "primary": {
+        "hex": "#0F172A",
+        "hsl": "222 47% 11%",
+        "name": "Deep Slate Navy",
+        "usage": "Headers, primary CTA buttons, hero backgrounds, primary text headings"
+      },
+      "secondary": {
+        "hex": "#0D9488",
+        "hsl": "173 80% 32%",
+        "name": "Academic Teal",
+        "usage": "Key highlights, active indicators, verified badges, primary metric focus, conversion CTAs"
+      },
+      "accent": {
+        "hex": "#2563EB",
+        "hsl": "217 91% 60%",
+        "name": "Royal Cobalt",
+        "usage": "Interactive states, links, secondary action buttons, student status indicators"
+      },
+      "background_light": {
+        "hex": "#F8FAFC",
+        "hsl": "210 40% 98%",
+        "name": "Crisp Paper Light",
+        "usage": "Main app/page background in light mode"
+      },
+      "surface_light": {
+        "hex": "#FFFFFF",
+        "hsl": "0 0% 100%",
+        "name": "Pure White",
+        "usage": "Cards, table containers, modal surfaces, sticky header background"
+      },
+      "background_dark": {
+        "hex": "#090D16",
+        "hsl": "222 47% 6%",
+        "name": "Midnight Obsidian",
+        "usage": "Dark mode background for admin panel and student/faculty portal dark toggle"
+      },
+      "surface_dark": {
+        "hex": "#121826",
+        "hsl": "222 36% 11%",
+        "name": "Dark Slate Surface",
+        "usage": "Dark mode cards, tables, popovers, sidebar navigation"
+      },
+      "border": {
+        "light": "rgba(226, 232, 240, 0.8)",
+        "dark": "rgba(30, 41, 59, 0.8)",
+        "hover": "rgba(13, 148, 136, 0.4)"
+      },
+      "status_colors": {
+        "success": "#059669",
+        "warning": "#D97706",
+        "danger": "#DC2626",
+        "info": "#0284C7"
+      }
+    }
+  },
+  "typography": {
+    "heading_font": "Plus Jakarta Sans, sans-serif",
+    "body_font": "Inter, system-ui, sans-serif",
+    "mono_font": "JetBrains Mono, monospace",
+    "hierarchy": {
+      "h1_hero": "text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-none",
+      "h2_section": "text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-slate-900 dark:text-slate-100",
+      "h3_subsection": "text-xl sm:text-2xl font-semibold text-slate-800 dark:text-slate-200",
+      "h4_card_title": "text-lg font-semibold text-slate-900 dark:text-slate-100",
+      "body_lead": "text-lg text-slate-600 dark:text-slate-300 leading-relaxed",
+      "body_regular": "text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-normal",
+      "caption": "text-xs font-medium text-slate-500 uppercase tracking-wider"
+    },
+    "anti_pattern_warning": "DO NOT use generic Inter for H1/H2 headings. Use Plus Jakarta Sans or Outfit for main headings with tight letter-spacing."
+  },
+  "layout_and_spacing": {
+    "container_padding": "px-4 sm:px-6 lg:px-12 py-8 sm:py-12 lg:py-16",
+    "section_gap": "space-y-16 sm:space-y-24",
+    "grid_modes": {
+      "marketing_bento": "grid grid-cols-1 md:grid-cols-8 lg:grid-cols-12 gap-6 md:gap-8",
+      "dashboard_high_density": "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6",
+      "portal_feed": "grid grid-cols-1 lg:grid-cols-3 gap-6"
+    },
+    "card_padding": "p-5 sm:p-6 lg:p-8",
+    "header_rules": "Sticky top-0 z-50 backdrop-blur-xl bg-white/90 dark:bg-slate-950/90 border-b border-slate-200/80 dark:border-slate-800/80"
+  },
+  "visual_enhancers": {
+    "borders": "1px solid rgba(226, 232, 240, 0.8) with subtle hover transition",
+    "shadows": {
+      "subtle": "0 1px 3px 0 rgb(0 0 0 / 0.05), 0 1px 2px -1px rgb(0 0 0 / 0.05)",
+      "card_hover": "0 10px 25px -5px rgba(15, 23, 42, 0.08), 0 8px 10px -6px rgba(15, 23, 42, 0.04)",
+      "dropdown": "0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)"
+    },
+    "glassmorphism": "backdrop-blur-md bg-white/80 dark:bg-slate-900/80 border border-slate-200/50 dark:border-slate-800/50",
+    "badges": "rounded-full px-3 py-1 text-xs font-medium border"
+  },
+  "image_urls": {
+    "hero_classroom": {
+      "url": "https://images.pexels.com/photos/8199166/pexels-photo-8199166.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "description": "Engaged university students in a modern coaching classroom during a lively discussion",
+      "category": "Hero & Marketing Banner"
+    },
+    "faculty_senior_professor": {
+      "url": "https://images.pexels.com/photos/8197541/pexels-photo-8197541.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "description": "Senior faculty member holding laptop, teaching advanced competitive exam modules",
+      "category": "Faculty Profiles & Highlights"
+    },
+    "students_study_group": {
+      "url": "https://images.unsplash.com/photo-1571260899304-425eee4c7efc?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Njl8MHwxfHNlYXJjaHwxfHxzdHVkZW50cyUyMHN0dWR5aW5nJTIwY2xhc3Nyb29tJTIwY29hY2hpbmclMjBpbnN0aXR1dGUlMjBhY2FkZW15fGVufDB8fHx8MTc5MjQ3NTU4OHww&ixlib=rb-4.1.0&q=85",
+      "description": "Dedicated student carrying textbooks in academy corridor",
+      "category": "Facilities & Student Life"
+    },
+    "lecture_hall": {
+      "url": "https://images.pexels.com/photos/8199151/pexels-photo-8199151.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "description": "Modern smart classroom lecture hall equipped with digital display technology",
+      "category": "Facilities & Methodologies"
+    },
+    "faculty_female_instructor": {
+      "url": "https://images.unsplash.com/photo-1573894999291-f440466112cc?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Njl8MHwxfHNlYXJjaHw0fHxzdHVkZW50cyUyMHN0dWR5aW5nJTIwY2xhc3Nyb29tJTIwY29hY2hpbmclMjBpbnN0aXR1dGUlMjBhY2FkZW15fGVufDB8fHx8MTc5MjQ3NTU4OHww&ixlib=rb-4.1.0&q=85",
+      "description": "Experienced academy instructor mentoring students",
+      "category": "Faculty Profile Card"
+    }
+  },
+  "component_guidelines": {
+    "navigation_bar": {
+      "desktop": "Brand logo on left, 5 visible nav links (Home, Courses, Faculty, Admissions, Demo Class, Contact) + Portal Login trigger CTA button",
+      "mobile": "Accessible Sheet/Drawer menu with mobile toggle icon",
+      "critical_rule": "Header must never be 100% transparent. Always use semi-opaque backdrop blur with z-50."
+    },
+    "tables_and_data": {
+      "style": "Clean cardless table container with inner scroll. Sticky table headers with subtle background (`bg-slate-50 dark:bg-slate-900`).",
+      "actions": "Inline actions dropdown or primary action badges.",
+      "search_and_filters": "SearchBar on left + Filter select dropdowns + Status badges."
+    },
+    "forms_and_modals": {
+      "inputs": "Shadcn UI Input, Select, Checkbox, Calendar for date selection. Clear active focus rings in Academic Teal (`ring-teal-500`).",
+      "dialogs": "Clean centered modal overlay with clear close button and data-testid attributes."
+    },
+    "toast_notifications": {
+      "library": "sonner",
+      "position": "top-right",
+      "theme": "light/dark synchronized"
+    }
+  },
+  "testing_conventions": {
+    "mandatory_attribute": "data-testid",
+    "naming_format": "kebab-case",
+    "examples": [
+      "data-testid=\"nav-courses-link\"",
+      "data-testid=\"enquiry-submit-button\"",
+      "data-testid=\"admin-login-submit\"",
+      "data-testid=\"student-attendance-table\"",
+      "data-testid=\"demo-booking-date-picker\""
+    ]
+  },
+  "instructions_to_main_agent": [
+    "Ensure EduPrime Academy has a cohesive identity across the public marketing website, admin dashboard, student portal, and faculty portal.",
+    "Do NOT use pure #000000 black or bright distracting full-screen gradients. Stick to Deep Navy (#0F172A), Slate, Pure White, and Academic Teal accents.",
+    "Every interactive button, input, link, tab, modal trigger, and table row MUST include a clear `data-testid` attribute.",
+    "Use standard Lucide icons (`lucide-react`) for UI actions and metric indicators.",
+    "Implement Sonner toast notifications for forms (Admission Enquiry, Demo Booking, Fee Receipts, Attendance Marking).",
+    "Ensure the mobile navigation menu works smoothly using Shadcn Sheet or mobile dropdowns."
+  ]
+}
