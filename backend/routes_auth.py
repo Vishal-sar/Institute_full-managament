@@ -16,6 +16,7 @@ from security import (
 )
 from routes_public import rate_limit
 import jwt
+from pymongo.errors import DuplicateKeyError
 from datetime import datetime, timezone, timedelta
 
 logger = logging.getLogger(__name__)
@@ -28,6 +29,25 @@ RESET_INVALID = "This reset link is invalid or has expired. Please request a new
 
 def _hash_token(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+async def _free_student_id(email: str):
+    # Auto-link only to a student record that no other login already owns.
+    student = await db.students.find_one({"email": email}, {"_id": 0, "id": 1})
+    if student and not await db.users.find_one({"linked_student_id": student["id"]}):
+        return student["id"]
+    return None
+
+
+async def _insert_user(user: dict):
+    try:
+        await db.users.insert_one(user)
+    except DuplicateKeyError:
+        if await db.users.find_one({"email": user["email"]}):
+            raise HTTPException(status_code=409, detail="An account with this email already exists. Please sign in.")
+        user.pop("_id", None)
+        user["linked_student_id"] = None
+        await db.users.insert_one(user)
 
 
 def _public_user(u: dict) -> dict:
@@ -68,17 +88,17 @@ async def register(payload: RegisterIn, request: Request, response: Response):
     if await db.users.find_one({"email": email}):
         raise HTTPException(status_code=409, detail="An account with this email already exists. Please sign in.")
     # Self-service accounts are always students; link to an existing student record if the email matches.
-    student = await db.students.find_one({"email": email}, {"_id": 0})
+    linked_student_id = await _free_student_id(email)
     uid = gen_id()
     user = {
         "id": uid, "email": email, "name": payload.name.strip(), "role": "student",
         "phone": payload.phone, "password_hash": hash_password(payload.password),
         "auth_provider": "password", "picture": None,
-        "linked_student_id": student["id"] if student else None,
+        "linked_student_id": linked_student_id,
         "linked_faculty_id": None, "active": True,
         "created_at": now_iso(), "updated_at": now_iso(),
     }
-    await db.users.insert_one(user)
+    await _insert_user(user)
     access = create_access_token(uid, email)
     refresh = create_refresh_token(uid)
     set_auth_cookies(response, access, refresh)
@@ -188,10 +208,9 @@ async def google_session(payload: GoogleSessionIn, response: Response):
     user = await db.users.find_one({"email": email})
     if not user:
         # Link to an existing managed student/faculty by email, else create a self-service student.
-        student = await db.students.find_one({"email": email}, {"_id": 0})
         faculty = await db.faculty.find_one({"email": email}, {"_id": 0})
         role = "student"
-        linked_student_id = student["id"] if student else None
+        linked_student_id = await _free_student_id(email)
         linked_faculty_id = None
         if faculty:
             role = "teacher"
@@ -203,7 +222,7 @@ async def google_session(payload: GoogleSessionIn, response: Response):
             "linked_student_id": linked_student_id, "linked_faculty_id": linked_faculty_id,
             "active": True, "created_at": now_iso(), "updated_at": now_iso(),
         }
-        await db.users.insert_one(user)
+        await _insert_user(user)
     else:
         await db.users.update_one({"id": user["id"]}, {"$set": {"picture": picture, "updated_at": now_iso()}})
 

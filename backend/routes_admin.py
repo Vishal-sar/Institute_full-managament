@@ -5,6 +5,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from pymongo.errors import DuplicateKeyError
 
 from db import db, gen_id, now_iso, today_str, audit
 from security import require_roles, hash_password
@@ -379,7 +380,10 @@ async def link_student_account(student_id: str, payload: LinkAccountIn, user=Sta
         raise HTTPException(status_code=409, detail="This account is already linked to another student record")
     if await db.users.find_one({"linked_student_id": student_id, "id": {"$ne": acct["id"]}}):
         raise HTTPException(status_code=409, detail="This student already has a linked account. Unlink it first.")
-    await db.users.update_one({"id": acct["id"]}, {"$set": {"linked_student_id": student_id, "updated_at": now_iso()}})
+    try:
+        await db.users.update_one({"id": acct["id"]}, {"$set": {"linked_student_id": student_id, "updated_at": now_iso()}})
+    except DuplicateKeyError:
+        raise HTTPException(status_code=409, detail="This student already has a linked account. Unlink it first.")
     await audit(user, "link_account", "student", student_id, f"Linked login {acct['email']} to {student['name']}")
     return {"message": "Account linked", "account": await db.users.find_one({"id": acct["id"]}, ACCOUNT_FIELDS)}
 

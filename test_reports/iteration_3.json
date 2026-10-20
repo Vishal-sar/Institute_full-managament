@@ -1,0 +1,34 @@
+{
+  "summary": "Tested Forgot/Reset Password and Admin Link/Unlink Student Account, backend (pytest, 14 tests) and UI (Playwright). Every requested flow works: the forgot response is the same for known and unknown emails, a new request marks older tokens used, a notification doc is written, reset works only once and rejects expired/short/bogus tokens, the new password logs in and the old one gets 401. Link/unlink rules all hold (403/404/400/409), audit logs are written, and the student portal changes from not-linked to real fees/attendance and back. Found 1 backend bug: self sign-up returns 500 when the email matches a student record that is already linked to another account.",
+  "backend_issues": {
+    "critical": [
+      {"endpoint": "POST /api/auth/register (also POST /api/auth/google/session)", "issue": "Returns 500 (pymongo DuplicateKeyError on the users.linked_student_id partial unique index) when the sign-up email matches a students.email record that is already linked to another user. register() sets linked_student_id=student['id'] without checking whether another user already has it. Reproduced twice. google_session has the same logic and will also 500.", "priority": "HIGH"}
+    ],
+    "minor": [
+      {"endpoint": "POST /api/admin/students/{id}/link-account", "issue": "If two staff link at the same time, the unique index raises DuplicateKeyError, which shows up as 500 instead of 409. Catch DuplicateKeyError and return 409."},
+      {"endpoint": "emailer password_reset", "issue": "Sending to @example.com addresses gives a 422 from the email service. notifications.status='failed' is recorded correctly and the request is not blocked, so behaviour is as expected."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/test_iter3_reset_link.py", "/app/backend/tests/ui_prep_iter3.py", "/app/test_reports/pytest/pytest_iter3.xml"],
+  "action_items": [
+    "In routes_auth.register and google_session: only auto-link when no other user already has linked_student_id == student['id'] (e.g. check db.users.find_one({'linked_student_id': student['id']}) and set None otherwise). Also wrap the insert in try/except DuplicateKeyError so it never returns 500.",
+    "In link_student_account: catch pymongo DuplicateKeyError and return 409."
+  ],
+  "critical_code_review_comments": [
+    "Forgot password correctly avoids user enumeration, but deactivated users get no email and no log entry. That's acceptable; consider logging it for support.",
+    "reset_password lets Google-only users (password_hash None) set a password. This is probably fine, but it is an implicit way to add password login.",
+    "The portal API is under /api/portal/student/* (the review request said /student, which is the frontend route)."
+  ],
+  "updated_files": ["/app/backend/tests/test_iter3_reset_link.py", "/app/backend/tests/ui_prep_iter3.py"],
+  "success_rate": {"backend": "93% (13/14 incl. the 500 edge case)", "frontend": "100%"},
+  "seed_data_creation": "Temporary qa+ users and reset tokens were created and then deleted. Student record cddd96ab55e14ced8ca96fc638370312 (TEST CapFill 45e3) was linked and unlinked several times and is unlinked again with email reset to null. The seeded student@eduprime-demo.com stays linked (portal overview returns 200).",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run: pytest /app/backend/tests/test_iter3_reset_link.py (it clears db.rate_limits itself). For UI: python /app/backend/tests/ui_prep_iter3.py prints a fresh user, raw reset token and an unlinked student id. Test IDs that worked: forgot-password-link, forgot-email-input, forgot-submit-btn, forgot-success, back-to-login-link, request-new-link, reset-password-input, reset-confirm-input, reset-submit-btn, reset-error, reset-success, reset-go-login, account-link-panel, no-linked-account, link-account-btn, link-account-dialog, link-account-search, link-account-option-<uid>, link-account-empty, link-account-save, linked-account-info, unlink-account-btn, unlink-account-dialog-confirm. Login: login-email-input, login-password-input, login-submit-btn, mode-register.",
+  "rca of the issue": "Repro: set a student record's email to X, link a different user to that student, then POST /api/auth/register with email X. Result: 500. Cause: register() looks up the student by email and inserts the user with linked_student_id=student.id. The partial unique index on users.linked_student_id (added this iteration) rejects the insert, and the DuplicateKeyError is not handled. Fix: skip auto-linking when the student is already linked, and handle DuplicateKeyError."
+}
