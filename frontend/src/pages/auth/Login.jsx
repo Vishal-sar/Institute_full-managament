@@ -118,7 +118,10 @@ export default function Login() {
               </div>
             )}
             <div className="space-y-1.5">
-              <Label htmlFor="password">Password</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password">Password</Label>
+                {isLogin && <Link to="/forgot-password" className="text-xs font-medium text-teal-700 hover:underline" data-testid="forgot-password-link">Forgot password?</Link>}
+              </div>
               <Input id="password" type="password" required value={form.password} onChange={(e) => set("password", e.target.value)}
                 placeholder={isLogin ? "••••••••" : "At least 6 characters"} data-testid="login-password-input" autoComplete={isLogin ? "current-password" : "new-password"} />
             </div>

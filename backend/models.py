@@ -20,6 +20,19 @@ class GoogleSessionIn(BaseModel):
     session_id: str
 
 
+class ForgotPasswordIn(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordIn(BaseModel):
+    token: str = Field(min_length=10, max_length=200)
+    password: str
+
+
+class LinkAccountIn(BaseModel):
+    user_id: str
+
+
 class RegisterIn(BaseModel):
     name: str
     email: EmailStr

@@ -171,6 +171,17 @@ def _build(kind: str, c: dict):
             f'<p>Hi {name},</p>'
             f'<p>Your admission enquiry status has been updated to <strong>{escape(str(c.get("status","")))}</strong>.</p>'
         )
+    elif kind == "password_reset":
+        subject = f"Reset your {EMAIL_FROM_NAME} password"
+        link = escape(str(c.get("link", "")), quote=True)
+        inner = (
+            f'<p>Hi {name},</p>'
+            f'<p>We received a request to reset the password for your {escape(EMAIL_FROM_NAME)} account.</p>'
+            f'<p style="margin:24px 0"><a href="{link}" style="display:inline-block;background:#0d9488;color:#ffffff;'
+            f'padding:12px 22px;border-radius:8px;text-decoration:none;font-weight:bold">Reset my password</a></p>'
+            f'<p>This link can be used once and expires in {escape(str(c.get("minutes", 60)))} minutes.</p>'
+            f'<p>If you did not request this, you can safely ignore this email. Nothing will change.</p>'
+        )
     else:
         subject = f"{EMAIL_FROM_NAME} notification"
         inner = f'<p>Hi {name},</p><p>{escape(str(c.get("message","")))}</p>'

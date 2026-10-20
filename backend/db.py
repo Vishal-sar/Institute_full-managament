@@ -49,6 +49,12 @@ async def create_indexes():
         await db.attendance.create_index(
             [("batch_id", 1), ("session_date", 1), ("student_id", 1)], unique=True
         )
+        await db.password_reset_tokens.create_index("token_hash")
+        await db.password_reset_tokens.create_index("expires_at", expireAfterSeconds=0)
+        await db.users.create_index(
+            "linked_student_id", unique=True,
+            partialFilterExpression={"linked_student_id": {"$type": "string"}},
+        )
     except Exception as e:  # noqa
         import logging
         logging.getLogger(__name__).warning(f"index creation: {e}")

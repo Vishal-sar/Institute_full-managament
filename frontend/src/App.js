@@ -23,6 +23,8 @@ import NotFound from "@/pages/public/NotFound";
 
 import Login from "@/pages/auth/Login";
 import AuthCallback from "@/pages/auth/AuthCallback";
+import ForgotPassword from "@/pages/auth/ForgotPassword";
+import ResetPassword from "@/pages/auth/ResetPassword";
 
 import { AdminLayout } from "@/pages/admin/AdminLayout";
 import Dashboard from "@/pages/admin/Dashboard";
@@ -69,6 +71,8 @@ function AppRoutes() {
       </Route>
 
       <Route path="/login" element={<Login />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
 
       <Route
         path="/admin"

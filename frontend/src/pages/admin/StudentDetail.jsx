@@ -20,6 +20,7 @@ import { StatusBadge } from "@/components/common/StatusBadge";
 import { StatCard } from "@/components/common/StatCard";
 import { ConfirmButton } from "@/components/common/ConfirmButton";
 import { printReceipt } from "@/lib/receipt";
+import { AccountLinkPanel } from "@/components/admin/AccountLinkPanel";
 
 export default function StudentDetail() {
   const { id } = useParams();
@@ -71,6 +72,7 @@ export default function StudentDetail() {
           <div><p className="text-xs uppercase tracking-wide text-slate-400">Batch</p><p className="text-sm font-medium text-slate-800">{batch?.name || "—"}</p></div>
           <div><p className="text-xs uppercase tracking-wide text-slate-400">Notes</p><p className="text-sm text-slate-600">{student.notes || "—"}</p></div>
         </div>
+        <AccountLinkPanel student={student} account={profile.account} onDone={load} />
       </div>
 
       <Tabs defaultValue="fees">

@@ -13,8 +13,10 @@ from emailer import notify
 from models import (
     CourseIn, FacultyIn, BatchIn, StudentIn, StudentUpdateIn, EnrollIn, EnquiryUpdateIn,
     FollowUpIn, ConvertIn, DemoSlotIn, AttendanceMarkIn, InstallmentIn, PaymentIn,
-    AnnouncementIn, StaffIn, StaffUpdateIn, SettingsIn,
+    AnnouncementIn, StaffIn, StaffUpdateIn, SettingsIn, LinkAccountIn,
 )
+
+ACCOUNT_FIELDS = {"_id": 0, "id": 1, "name": 1, "email": 1, "phone": 1, "auth_provider": 1, "created_at": 1}
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -355,7 +357,41 @@ async def student_profile(student_id: str, user=Staff):
         "student": s, "course": course, "batch": batch, "enrollments": enrollments,
         "fees": await fee_summary(student_id),
         "attendance": await attendance_summary(student_id),
+        "account": await db.users.find_one({"linked_student_id": student_id}, ACCOUNT_FIELDS),
     }
+
+
+@router.get("/student-accounts")
+async def unlinked_student_accounts(user=Staff):
+    q = {"role": "student", "linked_student_id": None, "active": {"$ne": False}}
+    return await db.users.find(q, ACCOUNT_FIELDS).sort("created_at", -1).to_list(500)
+
+
+@router.post("/students/{student_id}/link-account")
+async def link_student_account(student_id: str, payload: LinkAccountIn, user=Staff):
+    student = await db.students.find_one({"id": student_id}, {"_id": 0})
+    if not student:
+        raise HTTPException(status_code=404, detail="Student not found")
+    acct = await db.users.find_one({"id": payload.user_id}, {"_id": 0, "password_hash": 0})
+    if not acct or acct.get("role") != "student":
+        raise HTTPException(status_code=400, detail="Only student login accounts can be linked")
+    if acct.get("linked_student_id") and acct["linked_student_id"] != student_id:
+        raise HTTPException(status_code=409, detail="This account is already linked to another student record")
+    if await db.users.find_one({"linked_student_id": student_id, "id": {"$ne": acct["id"]}}):
+        raise HTTPException(status_code=409, detail="This student already has a linked account. Unlink it first.")
+    await db.users.update_one({"id": acct["id"]}, {"$set": {"linked_student_id": student_id, "updated_at": now_iso()}})
+    await audit(user, "link_account", "student", student_id, f"Linked login {acct['email']} to {student['name']}")
+    return {"message": "Account linked", "account": await db.users.find_one({"id": acct["id"]}, ACCOUNT_FIELDS)}
+
+
+@router.post("/students/{student_id}/unlink-account")
+async def unlink_student_account(student_id: str, user=Staff):
+    acct = await db.users.find_one({"linked_student_id": student_id}, ACCOUNT_FIELDS)
+    if not acct:
+        raise HTTPException(status_code=404, detail="No login account is linked to this student")
+    await db.users.update_one({"id": acct["id"]}, {"$set": {"linked_student_id": None, "updated_at": now_iso()}})
+    await audit(user, "unlink_account", "student", student_id, f"Unlinked login {acct['email']}")
+    return {"message": "Account unlinked"}
 
 
 @router.post("/students")

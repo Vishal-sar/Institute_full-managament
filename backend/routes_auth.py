@@ -1,10 +1,14 @@
 import os
+import re
 import httpx
+import hashlib
+import secrets
 import logging
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, Response
 
-from db import db, gen_id, now_iso
-from models import LoginIn, GoogleSessionIn, RegisterIn
+from db import db, gen_id, now_iso, audit
+from models import LoginIn, GoogleSessionIn, RegisterIn, ForgotPasswordIn, ResetPasswordIn
+from emailer import notify
 from security import (
     verify_password, create_access_token, create_refresh_token, set_auth_cookies,
     set_session_cookie, clear_cookies, get_current_user, check_lockout, register_failure,
@@ -18,6 +22,12 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 EMERGENT_SESSION_URL = "https://demobackend.emergentagent.com/auth/v1/env/oauth/session-data"
+RESET_TTL_MINUTES = 60
+RESET_INVALID = "This reset link is invalid or has expired. Please request a new one."
+
+
+def _hash_token(token: str) -> str:
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
 
 def _public_user(u: dict) -> dict:
@@ -73,6 +83,53 @@ async def register(payload: RegisterIn, request: Request, response: Response):
     refresh = create_refresh_token(uid)
     set_auth_cookies(response, access, refresh)
     return _public_user(user)
+
+
+@router.post("/forgot-password")
+async def forgot_password(payload: ForgotPasswordIn, request: Request, background: BackgroundTasks):
+    await rate_limit(request, "forgot", limit=5, window_sec=900)
+    email = payload.email.lower().strip()
+    user = await db.users.find_one({"email": email}, {"_id": 0, "password_hash": 0})
+    if user and user.get("active", True):
+        await db.password_reset_tokens.update_many({"user_id": user["id"], "used": False}, {"$set": {"used": True}})
+        token = secrets.token_urlsafe(32)
+        await db.password_reset_tokens.insert_one({
+            "id": gen_id(), "user_id": user["id"], "token_hash": _hash_token(token), "used": False,
+            "expires_at": datetime.now(timezone.utc) + timedelta(minutes=RESET_TTL_MINUTES), "created_at": now_iso(),
+        })
+        link = f"{os.environ['FRONTEND_URL'].rstrip('/')}/reset-password?token={token}"
+        background.add_task(notify, "password_reset", email,
+                            {"name": user.get("name"), "link": link, "minutes": RESET_TTL_MINUTES})
+    # Same response whether or not the account exists (no user enumeration).
+    return {"message": "If an account exists for this email, a password reset link has been sent."}
+
+
+@router.post("/reset-password")
+async def reset_password(payload: ResetPasswordIn, request: Request):
+    await rate_limit(request, "reset", limit=10, window_sec=900)
+    if len(payload.password) < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+    rec = await db.password_reset_tokens.find_one({"token_hash": _hash_token(payload.token), "used": False}, {"_id": 0})
+    if not rec:
+        raise HTTPException(status_code=400, detail=RESET_INVALID)
+    exp = rec["expires_at"]
+    if exp.tzinfo is None:
+        exp = exp.replace(tzinfo=timezone.utc)
+    if exp < datetime.now(timezone.utc):
+        raise HTTPException(status_code=400, detail=RESET_INVALID)
+    claim = await db.password_reset_tokens.update_one(
+        {"id": rec["id"], "used": False}, {"$set": {"used": True, "used_at": now_iso()}})
+    if claim.modified_count == 0:
+        raise HTTPException(status_code=400, detail=RESET_INVALID)
+    user = await db.users.find_one({"id": rec["user_id"]}, {"_id": 0, "password_hash": 0})
+    if not user or not user.get("active", True):
+        raise HTTPException(status_code=400, detail=RESET_INVALID)
+    await db.users.update_one({"id": user["id"]}, {"$set": {
+        "password_hash": hash_password(payload.password), "updated_at": now_iso()}})
+    await db.auth_sessions.delete_many({"user_id": user["id"]})
+    await db.login_attempts.delete_many({"identifier": {"$regex": f":{re.escape(user['email'])}$"}})
+    await audit(user, "password_reset", "user", user["id"], "Password reset via emailed link")
+    return {"message": "Password updated. You can now sign in with your new password."}
 
 
 @router.post("/logout")
